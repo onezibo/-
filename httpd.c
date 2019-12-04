@@ -378,14 +378,12 @@ int main()
     {
         return -1;
     }
-
     int res = evhttp_bind_socket(http_server, "0.0.0.0", 8888);
     if (res == -1)
     {
         return -1;
     }
     // Normal requst
-
     evhttp_set_gencb(http_server, normal_dispatch_callback, NULL);
 
     // File Download and Upload Request
@@ -405,12 +403,12 @@ int main()
     // {
     //     printf("%s\n", entry->d_name);
     // }
-    if (has_file("/Users/yangchen/Desktop/Computer Networking/libevent-test/files/ken/test.go"))
-    {
-        printf("YES");
-    }
-    else
-    {
-        printf("NO");
-    }
+    // if (has_file("/Users/yangchen/Desktop/Computer Networking/libevent-test/files/ken/test.go"))
+    // {
+    //     printf("YES");
+    // }
+    // else
+    // {
+    //     printf("NO");
+    // }
 }

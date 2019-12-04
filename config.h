@@ -1,6 +1,10 @@
 #include <event2/event.h>
-char FILE_WORKING_DIR[100] = "./files";
-char LISTENING_ADDRESS[100] = "0.0.0.0";
-ev_int16_t LISTENING_PORT = 80;
-int CHUNK_SIZE = 64 * 1024; // 64KB
-int DOWNLOAD_FILE_CHUNK_OPTION = 1;
+
+#ifndef CONFIG_H
+#define CONFIG_H
+extern char FILE_WORKING_DIR[100];
+extern char LISTENING_ADDRESS[100];
+extern ev_int16_t LISTENING_PORT;
+extern int CHUNK_SIZE;
+extern int DOWNLOAD_FILE_CHUNK_OPTION;
+#endif
