@@ -1,5 +1,5 @@
 #include "utils.h"
-
+#include "config.h"
 void urldecode(char *dst, const char *src)
 {
     char a, b;
@@ -119,4 +119,26 @@ int save_file(char *path, char *file_name, char *file_content, size_t file_lengt
         fclose(fp);
         return 1;
     }
+}
+
+char *strstr2(const char *s1, const char *s2, size_t len1)
+{
+    int len2;
+    if (!(len2 = strlen(s2))) //此种情况下s2不能指向空，否则strlen无法测出长度，这条语句错误
+        return (char *)s1;
+    for (int i = 0; i < len1; i++)
+    {
+        if (s1[i] == *s2 && strncmp(s1 + i, s2, len2) == 0)
+            return (char *)(s1 + i);
+    }
+    return NULL;
+}
+int mkdir_p(char *dir, mode_t m)
+{
+    char shell[200];
+    strcpy(shell, "mkdir -p");
+    strcat(shell, " ");
+    strcat(shell, dir);
+    system(shell);
+    return 0;
 }
