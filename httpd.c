@@ -11,6 +11,16 @@
 #include <event.h>
 #include <dirent.h>
 #include <sys/stat.h>
+#include <openssl/ssl.h>
+#include <openssl/err.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <sys/types.h>
+#include <event2/bufferevent.h>
+#include <event2/visibility.h>
+#include <event2/event-config.h>
+#include <event2/util.h>
+#include <event2/bufferevent_ssl.h>
 
 #include "utils.h"
 #include "config.h"
@@ -367,6 +377,19 @@ void normal_dispatch_callback(struct evhttp_request *req, void *args)
     default:
         break;
     }
+}
+
+static struct bufferevent *bevcb(struct event_base *base, void *arg)
+{
+    struct bufferevent *r;
+    SSL_CTX *ctx = (SSL_CTX *)arg;
+
+    r = bufferevent_openssl_socket_new(base,
+                                       -1,
+                                       SSL_new(ctx),
+                                       BUFFEREVENT_SSL_ACCEPTING,
+                                       BEV_OPT_CLOSE_ON_FREE);
+    return r;
 }
 
 int main()
