@@ -210,7 +210,7 @@ void do_download_file(struct evhttp_request *req, void *args)
             printf("%s\n", path);
             int fd = fileno(fp);
             fseek(fp, 0, SEEK_END);
-            long file_size = ftell(fp);
+            size_t file_size = ftell(fp);
             fseek(fp, 0, SEEK_SET);
 
             // To judge if header has 'keep-alive'
@@ -230,9 +230,29 @@ void do_download_file(struct evhttp_request *req, void *args)
             else
             {
                 // Chunk transfer
-            }
+                struct evkeyvalq *output_header_kvq = evhttp_request_get_output_headers(req);
+                evhttp_add_header(output_header_kvq, "Content-Type", "application/octet-stream");
+                size_t num_chunk = (file_size + CHUNK_SIZE - 1) / CHUNK_SIZE; // To ensure that at least one chunk
 
-            // Download File with chunks
+                evhttp_send_reply_start(req, HTTP_OK, "OK");
+                // 前 n - 1 个chunk是完整的
+                for (int i = 0; i < num_chunk - 1; i++)
+                {
+                    struct evbuffer *buff = evbuffer_new();
+                    struct evbuffer_file_segment *this_seg = evbuffer_file_segment_new(fd, i * CHUNK_SIZE, CHUNK_SIZE, NULL);
+                    evbuffer_add_file_segment(buff, this_seg, 0, CHUNK_SIZE);
+                    evhttp_send_reply_chunk(req, buff);
+                    evbuffer_free(buff);
+                }
+
+                // 最后一个chunk是不完整的
+                struct evbuffer *buff = evbuffer_new();
+                struct evbuffer_file_segment *this_seg = evbuffer_file_segment_new(fd, (num_chunk - 1) * CHUNK_SIZE, file_size - (num_chunk - 1) * CHUNK_SIZE, NULL);
+                evbuffer_add_file_segment(buff, this_seg, 0, CHUNK_SIZE);
+                evhttp_send_reply_chunk(req, buff);
+                evbuffer_free(buff);
+                evhttp_send_reply_end(req);
+            }
         }
         else
         {
