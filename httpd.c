@@ -12,65 +12,9 @@
 #include <dirent.h>
 #include <sys/stat.h>
 
+#include "utils.h"
+#include "config.h"
 #include "template.h"
-
-extern void urldecode(char *dst, const char *src);
-char FILE_WORKING_DIR[100] = "./files";
-char *strstr2(const char *s1, const char *s2, size_t len1)
-{
-    int len2;
-    if (!(len2 = strlen(s2))) //此种情况下s2不能指向空，否则strlen无法测出长度，这条语句错误
-        return (char *)s1;
-    for (int i = 0; i < len1; i++)
-    {
-        if (s1[i] == *s2 && strncmp(s1 + i, s2, len2) == 0)
-            return (char *)(s1 + i);
-    }
-    return NULL;
-}
-int mkdir_p(char *dir, mode_t m)
-{
-    char shell[200];
-    strcpy(shell, "mkdir -p");
-    strcat(shell, " ");
-    strcat(shell, dir);
-    system(shell);
-}
-int save_file(char *path, char *file_name, char *file_content, size_t file_length)
-{
-    char file_path[100];
-    strcpy(file_path, FILE_WORKING_DIR);
-    strcat(file_path, path);
-    if (!has_file(file_path))
-    {
-        mkdir_p(file_path, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-    }
-    strcat(file_path, "/");
-    strcat(file_path, file_name);
-    printf("File Path:%s", file_path);
-    fflush(stdout);
-    if (has_file(file_path))
-    {
-        return 0;
-    }
-    else
-    {
-        FILE *fp = fopen(file_path, "w+");
-        printf("opened");
-
-        if (fp == NULL)
-        {
-            printf("Error");
-            fflush(stdout);
-        }
-        for (int i = 0; i < file_length; i++)
-        {
-            fputc(file_content[i], fp);
-        }
-        fclose(fp);
-        return 1;
-    }
-}
 char *get_formdata_filename(const char *data, int *len)
 {
     // get file name from data, return the address of beginning of filenamr and store length in len
@@ -87,7 +31,7 @@ char *get_formdata_filename(const char *data, int *len)
 
 char *get_formdata_path(const char *data, int *len, size_t data_length)
 {
-    // get file name from data, return the address of beginning of filenamr and store length in len
+    // get request path from data, return the address of beginning of path and store length in len
     char *begin = strstr2(data, "name=\"path\"", data_length) + 11; // 11 for name="path"
     begin = strstr(begin, "/");                                     // begin = '/'
     char *end = strstr(begin, "\r\n");                              //end = '\n'
@@ -128,52 +72,10 @@ char *get_formdata_content(const char *data, size_t *len, size_t data_length)
 
     return begin;
 }
-int is_dir(char *path)
-{
-    struct stat st;
-    stat(path, &st);
-    if (S_ISDIR(st.st_mode))
-    {
-        return 1;
-    }
-    return 0;
-}
 
-int has_file(char *path)
-{
-    if (access(path, F_OK) != -1)
-    {
-        return 1;
-    }
-    return 0;
-}
-
-int file_exist(char *dir_name, char *file_name)
-{
-    // 1 if exists, 0 if not
-    struct dirent *entry;
-    struct stat statbuf;
-    DIR *dir;
-    dir = opendir(FILE_WORKING_DIR);
-    if (dir == NULL)
-    {
-        printf("OpenDir error!");
-        return 0;
-    }
-    while ((entry = readdir(dir)) != NULL)
-    {
-        lstat(entry->d_name, &statbuf);
-        printf("File: %s\n", entry->d_name);
-        if (!S_ISCHR(statbuf.st_mode) && (strcmp(file_name, entry->d_name) == 0))
-        {
-            return 1;
-        }
-    }
-
-    return 0;
-}
 void do_get_request(struct evhttp_request *req, void *args)
 {
+    // Callback for GET request
     // Easily return a message and reqeust uri and arguments list
     // Example:
     // You have sent a GET request to the server
@@ -200,6 +102,7 @@ void do_get_request(struct evhttp_request *req, void *args)
 
 void do_post_request(struct evhttp_request *req, void *args)
 {
+    // Callback for POST request
     // Easily return a message, request uri and argument list
     // WARNING: FOR TEST USE, post requests' message should be hidden
     // "You have sent a POST request to the server"
@@ -292,7 +195,7 @@ void do_download_file(struct evhttp_request *req, void *args)
                 evbuffer_add_printf(buff, "<p><a href=\"%s\">%s</p>", url_path, entry->d_name);
             }
         }
-        evbuffer_add_printf(buff, "</body>\n</html>");
+        evbuffer_add_printf(buff, DOWNLOAD_HTML_TAIL_TEMPLATE);
         evhttp_send_reply(req, HTTP_OK, "OK", buff);
         free(namelist);
     }
@@ -301,22 +204,59 @@ void do_download_file(struct evhttp_request *req, void *args)
     {
         if (has_file(path))
         {
-            // send reply
+            // send reply to download the file
             struct evbuffer *buff = evbuffer_new();
             FILE *fp = fopen(path, "r");
             printf("%s\n", path);
             int fd = fileno(fp);
             fseek(fp, 0, SEEK_END);
-            long file_size = ftell(fp);
+            size_t file_size = ftell(fp);
             fseek(fp, 0, SEEK_SET);
-            evbuffer_add_file(buff, fd, 0, file_size);
-            struct evkeyvalq *output_header_kvq = evhttp_request_get_output_headers(req);
-            evhttp_add_header(output_header_kvq, "Content-Type", "application/octet-stream");
-            evhttp_send_reply(req, HTTP_OK, "OK", buff);
-            evbuffer_free(buff);
+
+            // To judge if header has 'keep-alive'
+            struct evkeyvalq *input_header_kvq = evhttp_request_get_input_headers(req);
+            const char *connection_type = evhttp_find_header(input_header_kvq, "Connection");
+            if (strcasecmp(connection_type, "keep-alive") != 0 || DOWNLOAD_FILE_CHUNK_OPTION == 0)
+            {
+                // No keep-alive or not to use chunk
+                // normal transfer
+                evbuffer_add_file(buff, fd, 0, file_size);
+                struct evkeyvalq *output_header_kvq = evhttp_request_get_output_headers(req);
+                evhttp_add_header(output_header_kvq, "Content-Type", "application/octet-stream");
+                evhttp_send_reply(req, HTTP_OK, "OK", buff);
+                evbuffer_free(buff);
+            }
+
+            else
+            {
+                // Chunk transfer
+                struct evkeyvalq *output_header_kvq = evhttp_request_get_output_headers(req);
+                evhttp_add_header(output_header_kvq, "Content-Type", "application/octet-stream");
+                size_t num_chunk = (file_size + CHUNK_SIZE - 1) / CHUNK_SIZE; // To ensure that at least one chunk
+
+                evhttp_send_reply_start(req, HTTP_OK, "OK");
+                // 前 n - 1 个chunk是完整的
+                for (int i = 0; i < num_chunk - 1; i++)
+                {
+                    struct evbuffer *buff = evbuffer_new();
+                    struct evbuffer_file_segment *this_seg = evbuffer_file_segment_new(fd, i * CHUNK_SIZE, CHUNK_SIZE, NULL);
+                    evbuffer_add_file_segment(buff, this_seg, 0, CHUNK_SIZE);
+                    evhttp_send_reply_chunk(req, buff);
+                    evbuffer_free(buff);
+                }
+
+                // 最后一个chunk是不完整的
+                struct evbuffer *buff = evbuffer_new();
+                struct evbuffer_file_segment *this_seg = evbuffer_file_segment_new(fd, (num_chunk - 1) * CHUNK_SIZE, file_size - (num_chunk - 1) * CHUNK_SIZE, NULL);
+                evbuffer_add_file_segment(buff, this_seg, 0, CHUNK_SIZE);
+                evhttp_send_reply_chunk(req, buff);
+                evbuffer_free(buff);
+                evhttp_send_reply_end(req);
+            }
         }
         else
         {
+            // send error reply
             evhttp_send_reply(req, HTTP_NOTFOUND, "File not found!", NULL);
         }
     }
@@ -326,9 +266,11 @@ void do_download_file(struct evhttp_request *req, void *args)
 
 void do_upload_file(struct evhttp_request *req, void *args)
 {
+
     enum evhttp_cmd_type method = evhttp_request_get_command(req);
     if (method == EVHTTP_REQ_GET)
     {
+        // Show upload interface
         struct evbuffer *buff = evbuffer_new();
         struct evkeyvalq *output_header_kvq = evhttp_request_get_output_headers(req);
         evbuffer_add_printf(buff, UPLOAD_HTML_TEMPLATE);
@@ -338,6 +280,7 @@ void do_upload_file(struct evhttp_request *req, void *args)
 
     else if (method == EVHTTP_REQ_POST)
     {
+        // Actual upload process
         size_t buffer_length = EVBUFFER_LENGTH(evhttp_request_get_input_buffer(req));
         printf("Buffer-Length: %ld", buffer_length);
         char input_buffer[buffer_length];
@@ -392,7 +335,6 @@ void do_upload_file(struct evhttp_request *req, void *args)
 void normal_dispatch_callback(struct evhttp_request *req, void *args)
 {
     char *uri = evhttp_request_get_uri(req);
-
     char *found = strstr(uri, "/download");
     if (found == uri)
     {
