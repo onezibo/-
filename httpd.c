@@ -394,13 +394,30 @@ static struct bufferevent *bevcb(struct event_base *base, void *arg)
 
 int main()
 {
-
     struct event_base *base = event_base_new();
     struct evhttp *http_server = evhttp_new(base);
     if (!http_server)
     {
         return -1;
     }
+
+    SSL_CTX *ctx = SSL_CTX_new(SSLv23_server_method());
+    SSL_CTX_set_options(ctx,
+                        SSL_OP_SINGLE_DH_USE |
+                            SSL_OP_SINGLE_ECDH_USE |
+                            SSL_OP_NO_SSLv2);
+    EC_KEY *ecdh = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
+    if (!ecdh)
+        die_most_horribly_from_openssl_error("EC_KEY_new_by_curve_name");
+    if (1 != SSL_CTX_set_tmp_ecdh(ctx, ecdh))
+    die_most_horribly_from_openssl_error("SSL_CTX_set_tmp_ecdh");
+
+    const char *certificate_chain = "server-certificate-chain.pem";
+    const char *private_key = "server-private-key.pem";
+    server_setup_certs(ctx, certificate_chain, private_key);
+
+    evhttp_set_bevcb(http_server, bevcb, ctx);
+
     int res = evhttp_bind_socket(http_server, "0.0.0.0", 8888);
     if (res == -1)
     {
