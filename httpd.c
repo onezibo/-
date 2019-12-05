@@ -25,6 +25,9 @@
 #include "utils.h"
 #include "config.h"
 #include "template.h"
+
+#define info_report printf
+
 char *get_formdata_filename(const char *data, int *len)
 {
     // get file name from data, return the address of beginning of filenamr and store length in len
@@ -258,7 +261,7 @@ void do_download_file(struct evhttp_request *req, void *args)
                 // 最后一个chunk是不完整的
                 struct evbuffer *buff = evbuffer_new();
                 struct evbuffer_file_segment *this_seg = evbuffer_file_segment_new(fd, (num_chunk - 1) * CHUNK_SIZE, file_size - (num_chunk - 1) * CHUNK_SIZE, NULL);
-                evbuffer_add_file_segment(buff, this_seg, 0, CHUNK_SIZE);
+                evbuffer_add_file_segment(buff, this_seg, 0, file_size - (num_chunk - 1) * CHUNK_SIZE);
                 evhttp_send_reply_chunk(req, buff);
                 evbuffer_free(buff);
                 evhttp_send_reply_end(req);
@@ -392,6 +395,35 @@ static struct bufferevent *bevcb(struct event_base *base, void *arg)
     return r;
 }
 
+void die_most_horribly_from_openssl_error(const char *func)
+{
+    fprintf(stderr, "%s failed:\n", func);
+
+    /* This is the OpenSSL function that prints the contents of the
+   * error stack to the specified file handle. */
+    ERR_print_errors_fp(stderr);
+
+    exit(EXIT_FAILURE);
+}
+
+static void server_setup_certs(SSL_CTX *ctx,
+                               const char *certificate_chain,
+                               const char *private_key)
+{
+    info_report("Loading certificate chain from '%s'\n"
+                "and private key from '%s'\n",
+                certificate_chain, private_key);
+
+    if (1 != SSL_CTX_use_certificate_chain_file(ctx, certificate_chain))
+        die_most_horribly_from_openssl_error("SSL_CTX_use_certificate_chain_file");
+
+    if (1 != SSL_CTX_use_PrivateKey_file(ctx, private_key, SSL_FILETYPE_PEM))
+        die_most_horribly_from_openssl_error("SSL_CTX_use_PrivateKey_file");
+
+    if (1 != SSL_CTX_check_private_key(ctx))
+        die_most_horribly_from_openssl_error("SSL_CTX_check_private_key");
+}
+
 int main()
 {
     struct event_base *base = event_base_new();
@@ -401,6 +433,7 @@ int main()
         return -1;
     }
 
+    SSL_library_init();
     SSL_CTX *ctx = SSL_CTX_new(SSLv23_server_method());
     SSL_CTX_set_options(ctx,
                         SSL_OP_SINGLE_DH_USE |
@@ -410,7 +443,7 @@ int main()
     if (!ecdh)
         die_most_horribly_from_openssl_error("EC_KEY_new_by_curve_name");
     if (1 != SSL_CTX_set_tmp_ecdh(ctx, ecdh))
-    die_most_horribly_from_openssl_error("SSL_CTX_set_tmp_ecdh");
+        die_most_horribly_from_openssl_error("SSL_CTX_set_tmp_ecdh");
 
     const char *certificate_chain = "server-certificate-chain.pem";
     const char *private_key = "server-private-key.pem";
