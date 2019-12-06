@@ -179,7 +179,7 @@ void do_download_file(struct evhttp_request *req, void *args)
         struct evkeyvalq *output_header_kvq = evhttp_request_get_output_headers(req);
         evhttp_add_header(output_header_kvq, "Content-Type", "text/html");
         evbuffer_add_printf(buff, DOWNLOAD_HTML_HEAD_TEMPLATE);
-        evbuffer_add_printf(buff, "<h1>Index of %s</h1>", p + 9);
+        evbuffer_add_printf(buff, "<h1>Directory listing of %s</h1>", p + 9);
         DIR *dir = opendir(path);
         struct dirent *entry;
         if (dir == NULL)
@@ -201,11 +201,11 @@ void do_download_file(struct evhttp_request *req, void *args)
             strcat(url_path, entry->d_name);
             if (entry->d_type == DT_DIR)
             {
-                evbuffer_add_printf(buff, "<p><a href=\"%s\">%s/</p>", url_path, entry->d_name);
+                evbuffer_add_printf(buff, "<p><i class=\"fa fa-folder-o\" style=\"color:black;\"></i>&nbsp;&nbsp;<a href=\"%s\">%s/</a></p>", url_path, entry->d_name);
             }
             else
             {
-                evbuffer_add_printf(buff, "<p><a href=\"%s\">%s</p>", url_path, entry->d_name);
+                evbuffer_add_printf(buff, "<p><i class=\"fa fa-file-text-o\" style=\"color:black;\"></i>&nbsp;&nbsp;<a href=\"%s\">%s</a></p>", url_path, entry->d_name);
             }
         }
         evbuffer_add_printf(buff, DOWNLOAD_HTML_TAIL_TEMPLATE);

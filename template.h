@@ -5,6 +5,7 @@
 <html>\
   <head>\
     <meta charset=\"utf-8\" />\
+    <script src=\"https://use.fontawesome.com/80a7387260.js\"></script>\
     <title>Download</title>\
   </head>\
   <body>"
