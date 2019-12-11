@@ -2,9 +2,11 @@
 
 #ifndef CONFIG_H
 #define CONFIG_H
-extern char FILE_WORKING_DIR[100];
-extern char LISTENING_ADDRESS[100];
+extern char *FILE_WORKING_DIR;
+extern char *LISTENING_ADDRESS;
 extern ev_int16_t LISTENING_PORT;
 extern int CHUNK_SIZE;
 extern int DOWNLOAD_FILE_CHUNK_OPTION;
+extern char *CERTIFICATE_CHAIN_FILE_NAME;
+extern char *PRIVATE_KEY_FILE_NAME;
 #endif

@@ -410,9 +410,9 @@ static void server_setup_certs(SSL_CTX *ctx,
                                const char *certificate_chain,
                                const char *private_key)
 {
-    info_report("Loading certificate chain from '%s'\n"
-                "and private key from '%s'\n",
-                certificate_chain, private_key);
+    printf("Loading certificate chain from '%s'\n"
+           "and private key from '%s'\n",
+           certificate_chain, private_key);
 
     if (1 != SSL_CTX_use_certificate_chain_file(ctx, certificate_chain))
         die_most_horribly_from_openssl_error("SSL_CTX_use_certificate_chain_file");
@@ -423,7 +423,6 @@ static void server_setup_certs(SSL_CTX *ctx,
     if (1 != SSL_CTX_check_private_key(ctx))
         die_most_horribly_from_openssl_error("SSL_CTX_check_private_key");
 }
-
 int main()
 {
     struct event_base *base = event_base_new();
@@ -444,14 +443,11 @@ int main()
         die_most_horribly_from_openssl_error("EC_KEY_new_by_curve_name");
     if (1 != SSL_CTX_set_tmp_ecdh(ctx, ecdh))
         die_most_horribly_from_openssl_error("SSL_CTX_set_tmp_ecdh");
-
-    const char *certificate_chain = "server-certificate-chain.pem";
-    const char *private_key = "server-private-key.pem";
-    server_setup_certs(ctx, certificate_chain, private_key);
+    server_setup_certs(ctx, CERTIFICATE_CHAIN_FILE_NAME, PRIVATE_KEY_FILE_NAME);
 
     evhttp_set_bevcb(http_server, bevcb, ctx);
 
-    int res = evhttp_bind_socket(http_server, "0.0.0.0", 8888);
+    int res = evhttp_bind_socket(http_server, LISTENING_ADDRESS, LISTENING_PORT);
     if (res == -1)
     {
         return -1;
