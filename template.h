@@ -48,14 +48,13 @@
   </script>\
 </html>"
 
-#define NOT_FOUND_HTML_HEAD_TEMPLATE \
+#define ERROR_HTML_HEAD_TEMPLATE \
   "<!DOCTYPE html>\
 <html>\
   <head>\
     <meta charset=\"utf-8\" />\
-    <link rel=\"stylesheet\" href=\"https://cdn.staticfile.org/font-awesome/4.7.0/css/font-awesome.min.css\">\
-    <title>404 Not Found</title>\
+    <title>Error</title>\
   </head>\
   <body>"
 
-#define NOT_FOUND_HTML_TAIL_TEMPLATE "</body>\n</html>"
+#define ERROR_HTML_TAIL_TEMPLATE "</body>\n</html>"

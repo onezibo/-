@@ -27,7 +27,22 @@
 #include "template.h"
 
 #define info_report printf
-
+void send_error_reply(struct evhttp_request *req, int status_code, const char *reason)
+{
+    struct evbuffer *buff = evhttp_request_get_output_buffer(req);
+    evbuffer_add_printf(buff, ERROR_HTML_HEAD_TEMPLATE);
+    switch (status_code)
+    {
+    case HTTP_NOTFOUND:
+        evbuffer_add_printf(buff, "<h1>%s</h1>", "404 Not Found");
+        evbuffer_add_printf(buff, "<p>%s</p>", reason);
+        break;
+    default:
+        break;
+    }
+    evbuffer_add_printf(buff, ERROR_HTML_TAIL_TEMPLATE);
+    evhttp_send_reply(req, status_code, reason, NULL);
+}
 char *get_formdata_filename(const char *data, int *len)
 {
     // get file name from data, return the address of beginning of filenamr and store length in len
@@ -270,12 +285,7 @@ void do_download_file(struct evhttp_request *req, void *args)
         else
         {
             // send error reply
-            struct evbuffer *buff = evhttp_request_get_output_buffer(req);
-            evbuffer_add_printf(buff, NOT_FOUND_HTML_HEAD_TEMPLATE);
-            evbuffer_add_printf(buff, "<h1>404 Not Found</h1>");
-            evbuffer_add_printf(buff, "<p>File doesn't exist</p>");
-            evbuffer_add_printf(buff, NOT_FOUND_HTML_TAIL_TEMPLATE);
-            evhttp_send_reply(req, HTTP_NOTFOUND, "Not Found", NULL);
+            send_error_reply(req, HTTP_NOTFOUND, "File doesn't exist");
         }
     }
 
