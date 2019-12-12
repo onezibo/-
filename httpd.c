@@ -270,7 +270,12 @@ void do_download_file(struct evhttp_request *req, void *args)
         else
         {
             // send error reply
-            evhttp_send_reply(req, HTTP_NOTFOUND, "File not found!", NULL);
+            struct evbuffer *buff = evhttp_request_get_output_buffer(req);
+            evbuffer_add_printf(buff, NOT_FOUND_HTML_HEAD_TEMPLATE);
+            evbuffer_add_printf(buff, "<h1>404 Not Found</h1>");
+            evbuffer_add_printf(buff, "<p>File doesn't exist</p>");
+            evbuffer_add_printf(buff, NOT_FOUND_HTML_TAIL_TEMPLATE);
+            evhttp_send_reply(req, HTTP_NOTFOUND, "Not Found", NULL);
         }
     }
 

@@ -5,11 +5,10 @@
 <html>\
   <head>\
     <meta charset=\"utf-8\" />\
-    <script src=\"https://use.fontawesome.com/80a7387260.js\"></script>\
+    <link rel=\"stylesheet\" href=\"https://cdn.staticfile.org/font-awesome/4.7.0/css/font-awesome.min.css\">\
     <title>Download</title>\
   </head>\
   <body>"
-
 #define DOWNLOAD_HTML_TAIL_TEMPLATE "</body>\n</html>"
 #define UPLOAD_HTML_TEMPLATE \
   "<!DOCTYPE html>\
@@ -48,3 +47,15 @@
     });\
   </script>\
 </html>"
+
+#define NOT_FOUND_HTML_HEAD_TEMPLATE \
+  "<!DOCTYPE html>\
+<html>\
+  <head>\
+    <meta charset=\"utf-8\" />\
+    <link rel=\"stylesheet\" href=\"https://cdn.staticfile.org/font-awesome/4.7.0/css/font-awesome.min.css\">\
+    <title>404 Not Found</title>\
+  </head>\
+  <body>"
+
+#define NOT_FOUND_HTML_TAIL_TEMPLATE "</body>\n</html>"
